@@ -1,5 +1,5 @@
 """
-Pruebas automatizadas de los Controladores.
+Pruebas automatizadas de los Controladores (Arquitectura MVC).
 Valida las reglas de negocio, el control de excepciones y las transacciones.
 
 Uso:
@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.controllers.inventario_controller import InventarioController
 from src.controllers.movimiento_controller import MovimientoController
-from src.repositories.lote_repository import LoteRepository
+from src.models.lote_model import LoteModel
 from src.core.db import ejecutar_escritura
 from src.core.exceptions import (
     ValidacionError,
@@ -27,12 +27,12 @@ from src.core.exceptions import (
 
 def ejecutar_pruebas():
     print("==================================================")
-    print("  SUITE DE PRUEBAS DE CONTROLADORES")
+    print("  SUITE DE PRUEBAS DE CONTROLADORES (MVC)")
     print("==================================================")
 
     inventario_ctrl = InventarioController()
     movimiento_ctrl = MovimientoController()
-    lote_repo = LoteRepository()
+    lote_model = LoteModel()
 
     errores = 0
 
@@ -95,7 +95,7 @@ def ejecutar_pruebas():
     print("\n--- 3. Probando Transacciones (Venta, Ingreso, Baja) ---")
 
     # Creamos un lote de prueba para no alterar los datos reales
-    id_temp = lote_repo.crear(
+    id_temp = lote_model.crear(
         num_lote="TEST-CTRL-01",
         fecha_vencimiento="2029-12-31",
         cant_inicial=50,
@@ -154,4 +154,3 @@ def ejecutar_pruebas():
 
 if __name__ == "__main__":
     ejecutar_pruebas()
-

@@ -4,32 +4,32 @@ import os
 # Asegura que la raíz del proyecto esté en el path de búsqueda
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from src.repositories.lote_repository import LoteRepository
+from src.models.lote_model import LoteModel
 
 
 class InventarioController:
     """
     Controlador para consultas y estado del inventario (Patrón MVC).
-    Desacopla la Vista de la persistencia y expone métricas y listas para la UI.
+    Desacopla la Vista del Modelo y expone métricas y listas para la UI.
     """
 
     def __init__(self):
-        self.lote_repo = LoteRepository()
+        self.lote_model = LoteModel()
 
     def obtener_alertas_stock_critico(self) -> list:
         """
         Retorna medicamentos que requieren reposición urgente.
         Calcula en Python las unidades a reponer de forma simple y legible.
         """
-        alertas = self.lote_repo.obtener_alertas_stock_critico()
+        alertas = self.lote_model.obtener_alertas_stock_critico()
         for item in alertas:
             item["unidades_a_reponer"] = item["stock_minimo"] - item["stock_total_disponible"]
         return alertas
 
     def obtener_lotes_proximos_a_vencer(self, dias: int = 180) -> list:
         """Retorna lotes en riesgo de vencimiento."""
-        return self.lote_repo.obtener_proximos_a_vencer(dias)
+        return self.lote_model.obtener_proximos_a_vencer(dias)
 
     def obtener_lotes_disponibles_para_venta(self) -> list:
         """Retorna los lotes activos y no vencidos aptos para venta en la UI."""
-        return self.lote_repo.obtener_disponibles_venta()
+        return self.lote_model.obtener_disponibles_venta()

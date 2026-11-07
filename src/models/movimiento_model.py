@@ -5,14 +5,14 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.core.db import ejecutar_lectura, ejecutar_escritura, ejecutar_transaccion
-from src.repositories.base_repository import BaseRepository
+from src.models.base_model import BaseModel
 
 
-class MovimientoRepository(BaseRepository):
+class MovimientoModel(BaseModel):
     """
-    Repositorio para la entidad Movimientos de Stock (Patrón DAO/Repository).
+    Modelo para la entidad Movimientos de Stock.
     Concentra todas las sentencias SQL de persistencia para movimientos e historial.
-    Hereda de BaseRepository: obtener_todos(), obtener_por_id(), eliminar(), contar_total().
+    Hereda de BaseModel: obtener_todos(), obtener_por_id(), eliminar(), contar_total().
     """
 
     def __init__(self):
@@ -21,7 +21,7 @@ class MovimientoRepository(BaseRepository):
     # ==========================================
     # C: CREATE INDIVIDUAL
     # ==========================================
-    def crear(self, tipo, cantidad, id_lote, fecha_hora=None):
+    def crear(self, tipo: str, cantidad: int, id_lote: int, fecha_hora: str = None) -> int:
         """Inserta un movimiento de stock individual."""
         if fecha_hora:
             sql = "INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote) VALUES (%s, %s, %s, %s)"
@@ -34,13 +34,13 @@ class MovimientoRepository(BaseRepository):
         return resultado["ultimo_id"]
 
     # ==========================================
-    # TRANSACCIÓN ATÓMICA DE STOCK
+    # TRANSACCIÓN DE STOCK
     # ==========================================
     def registrar_movimiento_y_actualizar_lote(
         self, id_lote: int, tipo: str, cantidad: int, nueva_cant: int, nuevo_estado: str
     ) -> bool:
         """
-        Ejecuta en una sola transacción SQL atómica:
+        Ejecuta en una sola transacción SQL:
           1. El cambio de stock y estado en la tabla 'lotes'.
           2. La inserción del registro histórico en 'movimientos_stock'.
         """
@@ -59,7 +59,7 @@ class MovimientoRepository(BaseRepository):
     # ==========================================
     # R: READ CON DETALLES (JOINs para auditoría)
     # ==========================================
-    def obtener_detallados(self):
+    def obtener_detallados(self) -> list:
         """Retorna el historial de movimientos enriquecido con datos del lote y medicamento."""
         sql = """
             SELECT 
@@ -77,12 +77,13 @@ class MovimientoRepository(BaseRepository):
         """
         return ejecutar_lectura(sql)
 
-    def obtener_por_lote(self, id_lote):
+    def obtener_por_lote(self, id_lote: int) -> list:
         """Retorna todos los movimientos asociados a un lote específico."""
         sql = "SELECT * FROM movimientos_stock WHERE id_lote = %s ORDER BY fecha_hora DESC"
         return ejecutar_lectura(sql, (id_lote,))
 
-    def obtener_por_tipo(self, tipo):
+    def obtener_por_tipo(self, tipo: str) -> list:
         """Retorna todos los movimientos filtrados por tipo ('Ingreso', 'Venta', 'Baja_vencimiento')."""
         sql = "SELECT * FROM movimientos_stock WHERE tipo = %s ORDER BY fecha_hora DESC"
         return ejecutar_lectura(sql, (tipo,))
+
