@@ -4,14 +4,14 @@ import os
 # Asegura que la raíz del proyecto esté en el path de búsqueda
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from src.core.db import ejecutar_lectura, ejecutar_escritura
+from src.core.db import ejecutar_lectura, ejecutar_escritura, ejecutar_transaccion
 from src.repositories.base_repository import BaseRepository
 
 
 class MovimientoRepository(BaseRepository):
     """
-    Repositorio para la entidad Movimientos de Stock.
-    Registra ingresos, ventas y bajas por vencimiento vinculados a un lote específico.
+    Repositorio para la entidad Movimientos de Stock (Patrón DAO/Repository).
+    Concentra todas las sentencias SQL de persistencia para movimientos e historial.
     Hereda de BaseRepository: obtener_todos(), obtener_por_id(), eliminar(), contar_total().
     """
 
@@ -19,44 +19,48 @@ class MovimientoRepository(BaseRepository):
         super().__init__(nombre_tabla="movimientos_stock", clave_primaria="id_movimiento")
 
     # ==========================================
-    # C: CREATE
+    # C: CREATE INDIVIDUAL
     # ==========================================
     def crear(self, tipo, cantidad, id_lote, fecha_hora=None):
-        """
-        Inserta un nuevo movimiento de stock.
-        :param tipo: 'Ingreso', 'Venta' o 'Baja_vencimiento'.
-        :param cantidad: Cantidad de unidades implicadas en el movimiento.
-        :param id_lote: ID del lote al que afecta el movimiento.
-        :param fecha_hora: Fecha y hora (opcional; si es None, MySQL usa NOW()).
-        :return: ID del movimiento generado.
-        """
+        """Inserta un movimiento de stock individual."""
         if fecha_hora:
-            sql = """
-                INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote)
-                VALUES (%s, %s, %s, %s)
-            """
+            sql = "INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote) VALUES (%s, %s, %s, %s)"
             valores = (tipo, cantidad, fecha_hora, id_lote)
         else:
-            sql = """
-                INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote)
-                VALUES (%s, %s, NOW(), %s)
-            """
+            sql = "INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote) VALUES (%s, %s, NOW(), %s)"
             valores = (tipo, cantidad, id_lote)
 
         resultado = ejecutar_escritura(sql, valores)
-        nuevo_id = resultado["ultimo_id"]
+        return resultado["ultimo_id"]
 
-        print(f"Movimiento '{tipo}' de {cantidad} un. registrado para el Lote ID {id_lote}. ID Asignado: {nuevo_id}")
-        return nuevo_id
+    # ==========================================
+    # TRANSACCIÓN ATÓMICA DE STOCK
+    # ==========================================
+    def registrar_movimiento_y_actualizar_lote(
+        self, id_lote: int, tipo: str, cantidad: int, nueva_cant: int, nuevo_estado: str
+    ) -> bool:
+        """
+        Ejecuta en una sola transacción SQL atómica:
+          1. El cambio de stock y estado en la tabla 'lotes'.
+          2. La inserción del registro histórico en 'movimientos_stock'.
+        """
+        operaciones = [
+            (
+                "UPDATE lotes SET cant_actual = %s, estado = %s WHERE id_lote = %s",
+                (nueva_cant, nuevo_estado, id_lote),
+            ),
+            (
+                "INSERT INTO movimientos_stock (tipo, cantidad, fecha_hora, id_lote) VALUES (%s, %s, NOW(), %s)",
+                (tipo, cantidad, id_lote),
+            ),
+        ]
+        return ejecutar_transaccion(operaciones)
 
     # ==========================================
     # R: READ CON DETALLES (JOINs para auditoría)
     # ==========================================
     def obtener_detallados(self):
-        """
-        Retorna el historial de movimientos enriquecido con los datos del
-        lote y del medicamento correspondiente (ideal para reportes y tablas UI).
-        """
+        """Retorna el historial de movimientos enriquecido con datos del lote y medicamento."""
         sql = """
             SELECT 
                 ms.id_movimiento,
@@ -82,22 +86,3 @@ class MovimientoRepository(BaseRepository):
         """Retorna todos los movimientos filtrados por tipo ('Ingreso', 'Venta', 'Baja_vencimiento')."""
         sql = "SELECT * FROM movimientos_stock WHERE tipo = %s ORDER BY fecha_hora DESC"
         return ejecutar_lectura(sql, (tipo,))
-
-
-# ==========================================
-# EJEMPLO DE USO DE LA CLASE
-# ==========================================
-if __name__ == "__main__":
-    repo = MovimientoRepository()
-
-    print("--- 1. REGISTRAR MOVIMIENTO TEMPORAL ---")
-    id_nuevo = repo.crear(tipo="Venta", cantidad=5, id_lote=1)
-
-    print("\n--- 2. LEER HISTORIAL DETALLADO (JOIN Lotes y Medicamentos) ---")
-    historial = repo.obtener_detallados()
-    for mov in historial[:5]:  # Mostramos los últimos 5
-        print(f"ID: {mov['id_movimiento']} | Fecha: {mov['fecha_hora']} | Tipo: {mov['tipo']:<16} | Cant: {mov['cantidad']} | Lote: {mov['num_lote']} | Med: {mov['medicamento']}")
-
-    print("\n--- 3. ELIMINAR MOVIMIENTO TEMPORAL (Heredado de BaseRepository) ---")
-    repo.eliminar(id_nuevo)
-
