@@ -11,25 +11,25 @@ from src.core.validators import (
     validar_lote_para_ingreso,
     validar_lote_para_baja,
 )
-from src.repositories.lote_repository import LoteRepository
-from src.repositories.movimiento_repository import MovimientoRepository
+from src.models.lote_model import LoteModel
+from src.models.movimiento_model import MovimientoModel
 
 
 class MovimientoController:
     """
-    Controlador para transacciones de stock físico.
-    Aplica las reglas de negocio y orquesta los repositorios.
+    Controlador para transacciones de stock físico (Patrón MVC).
+    Aplica las reglas de negocio y orquesta los modelos del sistema.
     """
 
     def __init__(self):
-        self.lote_repo = LoteRepository()
-        self.movimiento_repo = MovimientoRepository()
+        self.lote_model = LoteModel()
+        self.movimiento_model = MovimientoModel()
 
     # ==========================================
     # MÉTODO AUXILIAR PRIVADO
     # ==========================================
     def _obtener_lote(self, id_lote: int) -> dict:
-        lote = self.lote_repo.obtener_por_id(id_lote)
+        lote = self.lote_model.obtener_por_id(id_lote)
         if not lote:
             raise EntidadNoEncontradaError("Lote", id_lote)
         return lote
@@ -38,7 +38,7 @@ class MovimientoController:
     # ACCIONES DEL CONTROLADOR
     # ==========================================
     def registrar_venta(self, id_lote: int, cantidad: int) -> dict:
-        """Registra la venta descontando stock y asentando el movimiento mediante el repositorio."""
+        """Registra la venta descontando stock y asentando el movimiento mediante el modelo."""
         validar_cantidad_positiva(cantidad)
         lote = self._obtener_lote(id_lote)
         validar_lote_para_venta(lote, cantidad)
@@ -46,7 +46,7 @@ class MovimientoController:
         nueva_cant = lote["cant_actual"] - cantidad
         nuevo_estado = "Agotado" if nueva_cant == 0 else "Activo"
 
-        self.movimiento_repo.registrar_movimiento_y_actualizar_lote(
+        self.movimiento_model.registrar_movimiento_y_actualizar_lote(
             id_lote=id_lote,
             tipo="Venta",
             cantidad=cantidad,
@@ -62,7 +62,7 @@ class MovimientoController:
         validar_lote_para_ingreso(lote)
 
         nueva_cant = lote["cant_actual"] + cantidad
-        self.movimiento_repo.registrar_movimiento_y_actualizar_lote(
+        self.movimiento_model.registrar_movimiento_y_actualizar_lote(
             id_lote=id_lote,
             tipo="Ingreso",
             cantidad=cantidad,
@@ -77,7 +77,7 @@ class MovimientoController:
         validar_lote_para_baja(lote)
 
         cant_descarte = lote["cant_actual"]
-        self.movimiento_repo.registrar_movimiento_y_actualizar_lote(
+        self.movimiento_model.registrar_movimiento_y_actualizar_lote(
             id_lote=id_lote,
             tipo="Baja_vencimiento",
             cantidad=cant_descarte,

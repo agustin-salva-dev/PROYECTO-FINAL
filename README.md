@@ -18,14 +18,51 @@ El sistema resuelve la problemática de control de inventario y pérdidas por ve
 
 ---
 
-## 🏗️ Arquitectura y Buenas Prácticas
+## 🏗️ Arquitectura del Sistema (MVC)
 
-El proyecto sigue una **Arquitectura en Capas (Layered Architecture)** y principios de **Clean Code**:
+El proyecto implementa la arquitectura **MVC (Modelo - Vista - Controlador)** combinada con principios de **Clean Code** y Programación Orientada a Objetos:
 
-- **POO Avanzada:** Implementación de herencia y polimorfismo con una clase padre `BaseRepository` que centraliza operaciones CRUD y captura excepciones de integridad referencial (MySQL Error 1451).
-- **Capa Core (`src/core`):** Conexión segura a MySQL con variables de entorno (`.env`) y gestión eficiente de recursos para prevenir fugas de conexión.
-- **Capa de Persistencia (`src/repositories`):** Repositorios específicos (`Medicamento`, `Proveedor`, `Lote`, `Movimiento`) desacoplados de la lógica de interfaz.
-- **Base de Datos Idempotente:** Script de automatización que permite desplegar la base de datos limpia con un solo comando.
+```text
+PROYECTO FINAL/
+├── db/                         # Scripts SQL y automatizador de inicialización
+│   ├── inicializar_db.py       # Despliegue automático e idempotente
+│   ├── schema.sql              # Estructura DDL (Tablas, Claves, Checks)
+│   └── seed.sql                # Datos iniciales realistas de prueba
+├── src/
+│   ├── core/                   # Infraestructura transversal
+│   │   ├── db.py               # Pool de conexiones, lectura, escritura y transacciones
+│   │   ├── exceptions.py       # Excepciones de dominio personalizadas
+│   │   └── validators.py       # Reglas de validación de negocio puras
+│   ├── models/                 # MODELO (M): Persistencia y entidades de datos
+│   │   ├── base_model.py       # Clase padre abstracta con CRUD genérico y manejo de FK
+│   │   ├── medicamento_model.py# Consultas y operaciones sobre medicamentos
+│   │   ├── proveedor_model.py  # Consultas y operaciones sobre proveedores
+│   │   ├── lote_model.py       # Gestión relacional de lotes y stock físico
+│   │   └── movimiento_model.py # Auditoría histórica y transacciones atómicas
+│   ├── controllers/            # CONTROLADOR (C): Orquestación y lógica de aplicación
+│   │   ├── inventario_controller.py # Alertas, reposición y filtros de lotes
+│   │   └── movimiento_controller.py # Ventas, ingresos y bajas transaccionales
+│   └── views/                  # VISTA (V): Interfaz gráfica de usuario (Tkinter)
+├── tests/                      # Suite de pruebas automatizadas
+│   ├── test_conexion.py        # Comprobación de enlace con MySQL
+│   └── test_controllers.py     # Pruebas integrales de reglas de negocio y transacciones
+├── .env.example                # Plantilla de variables de entorno
+└── README.md                   # Documentación principal del proyecto
+```
+
+### Componentes de la Arquitectura:
+
+- **Modelo (`src/models`):**
+  - **POO Avanzada:** Herencia a partir de `BaseModel`, centralizando operaciones CRUD (`obtener_todos`, `obtener_por_id`, `eliminar`, `contar_total`) y captura controlada de errores de integridad referencial (MySQL Error 1451).
+  - Modelos especializados (`MedicamentoModel`, `ProveedorModel`, `LoteModel`, `MovimientoModel`) que encapsulan sentencias SQL parametrizadas para prevenir inyecciones SQL.
+- **Controlador (`src/controllers`):**
+  - Conecta la Vista con los Modelos correspondientes.
+  - Ejecuta validaciones previas mediante `src/core/validators` antes de persistir cambios.
+  - Asegura transacciones atómicas (por ejemplo, actualizando simultáneamente el stock del lote y registrando la fila de auditoría en `movimientos_stock`).
+- **Vista (`src/views`):**
+  - Formularios y pantallas interactivas desarrolladas en **Tkinter**, desacopladas de la persistencia directa.
+- **Capa Core (`src/core`):**
+  - Conexión segura a MySQL con variables de entorno (`.env`) y gestión robusta de conexiones para prevenir fugas de recursos.
 
 ---
 

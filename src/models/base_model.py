@@ -7,28 +7,29 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from src.core.db import ejecutar_lectura, ejecutar_escritura
 import mysql.connector
 
-class BaseRepository:
+
+class BaseModel:
     """
-    Clase base para todos los repositorios del sistema (POO - Herencia).
+    Clase base para todos los modelos del sistema .
     Contiene la lógica común de las operaciones CRUD para evitar repetir código.
     """
 
-    def __init__(self, nombre_tabla: str, clave_primaria: int):
+    def __init__(self, nombre_tabla: str, clave_primaria: str):
         self.tabla = nombre_tabla
         self.pk = clave_primaria
 
-    def obtener_todos(self):
+    def obtener_todos(self) -> list:
         """Retorna todos los registros de la tabla."""
         sql = f"SELECT * FROM {self.tabla}"
         return ejecutar_lectura(sql)
 
-    def obtener_por_id(self, id_registro):
+    def obtener_por_id(self, id_registro: int) -> dict | None:
         """Retorna un único registro según su clave primaria."""
         sql = f"SELECT * FROM {self.tabla} WHERE {self.pk} = %s"
         resultados = ejecutar_lectura(sql, (id_registro,))
         return resultados[0] if resultados else None
 
-    def eliminar(self, id_registro):
+    def eliminar(self, id_registro: int) -> bool:
         """
         Elimina un registro según su clave primaria.
         Controla errores de clave foránea (integridad referencial).
@@ -53,8 +54,9 @@ class BaseRepository:
                 print(f"Error al eliminar en '{self.tabla}': {err}")
             return False
 
-    def contar_total(self):
+    def contar_total(self) -> int:
         """Retorna la cantidad total de registros en la tabla."""
         sql = f"SELECT COUNT(*) AS total FROM {self.tabla}"
         res = ejecutar_lectura(sql)
         return res[0]["total"] if res else 0
+
