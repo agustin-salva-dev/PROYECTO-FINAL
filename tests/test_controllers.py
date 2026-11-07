@@ -44,6 +44,9 @@ def ejecutar_pruebas():
     try:
         alertas = inventario_ctrl.obtener_alertas_stock_critico()
         assert isinstance(alertas, list)
+        if alertas:
+            assert "unidades_a_reponer" in alertas[0]
+            assert alertas[0]["unidades_a_reponer"] >= 0
         print(f"  [OK] obtener_alertas_stock_critico() -> {len(alertas)} medicamento(s) en alerta.")
     except Exception as e:
         print(f"  [FALLO] obtener_alertas_stock_critico(): {e}")

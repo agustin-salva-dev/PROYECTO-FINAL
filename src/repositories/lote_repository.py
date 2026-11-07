@@ -69,8 +69,7 @@ class LoteRepository(BaseRepository):
                 m.dosis_valor,
                 m.dosis_unidad,
                 m.stock_minimo,
-                IFNULL(SUM(l.cant_actual), 0) AS stock_total_disponible,
-                GREATEST(0, CAST(m.stock_minimo AS SIGNED) - CAST(IFNULL(SUM(l.cant_actual), 0) AS SIGNED)) AS unidades_a_reponer
+                IFNULL(SUM(l.cant_actual), 0) AS stock_total_disponible
             FROM medicamentos m
             LEFT JOIN lotes l ON m.id_medicamento = l.id_medicamento 
                              AND l.estado = 'Activo' 
@@ -83,12 +82,12 @@ class LoteRepository(BaseRepository):
                 m.dosis_unidad, 
                 m.stock_minimo
             HAVING stock_total_disponible <= m.stock_minimo
-            ORDER BY unidades_a_reponer DESC;
+            ORDER BY stock_total_disponible ASC;
         """
         return ejecutar_lectura(sql)
 
     def obtener_proximos_a_vencer(self, dias=180):
-        """Consulta compleja: lotes activos con vencimiento próximo bajo política FEFO."""
+        """Consulta compleja: lotes activos con vencimiento próximo."""
         sql = """
             SELECT 
                 l.id_lote,

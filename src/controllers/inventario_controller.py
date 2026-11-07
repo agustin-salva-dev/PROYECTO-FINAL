@@ -9,7 +9,7 @@ from src.repositories.lote_repository import LoteRepository
 
 class InventarioController:
     """
-    Controlador para consultas y estado del inventario.
+    Controlador para consultas y estado del inventario (Patrón MVC).
     Desacopla la Vista de la persistencia y expone métricas y listas para la UI.
     """
 
@@ -17,11 +17,17 @@ class InventarioController:
         self.lote_repo = LoteRepository()
 
     def obtener_alertas_stock_critico(self) -> list:
-        """Retorna medicamentos que requieren reposición urgente."""
-        return self.lote_repo.obtener_alertas_stock_critico()
+        """
+        Retorna medicamentos que requieren reposición urgente.
+        Calcula en Python las unidades a reponer de forma simple y legible.
+        """
+        alertas = self.lote_repo.obtener_alertas_stock_critico()
+        for item in alertas:
+            item["unidades_a_reponer"] = item["stock_minimo"] - item["stock_total_disponible"]
+        return alertas
 
     def obtener_lotes_proximos_a_vencer(self, dias: int = 180) -> list:
-        """Retorna lotes en riesgo de vencimiento bajo política FEFO."""
+        """Retorna lotes en riesgo de vencimiento."""
         return self.lote_repo.obtener_proximos_a_vencer(dias)
 
     def obtener_lotes_disponibles_para_venta(self) -> list:
