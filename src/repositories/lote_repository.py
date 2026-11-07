@@ -7,10 +7,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from src.core.db import ejecutar_lectura, ejecutar_escritura
 from src.repositories.base_repository import BaseRepository
 
+
 class LoteRepository(BaseRepository):
     """
     Repositorio para la entidad Lotes.
     Hereda de BaseRepository: obtener_todos(), obtener_por_id(), eliminar(), contar_total().
+    Concentra todas las consultas SQL relacionales vinculadas a stock y lotes.
     """
 
     def __init__(self):
@@ -33,13 +35,10 @@ class LoteRepository(BaseRepository):
         return nuevo_id
 
     # ==========================================
-    # R: READ CON DETALLES
+    # R: READ CON DETALLES (JOINs)
     # ==========================================
     def obtener_detallados(self):
-        """
-        Consulta avanzada específica de Lotes:
-        Retorna los lotes junto con los nombres del medicamento y proveedor asociados.
-        """
+        """Retorna los lotes junto con los nombres del medicamento y proveedor asociados."""
         sql = """
             SELECT 
                 l.id_lote, 
@@ -57,6 +56,79 @@ class LoteRepository(BaseRepository):
         """
         return ejecutar_lectura(sql)
 
+    def obtener_alertas_stock_critico(self):
+        """
+        Consulta compleja (JOIN, GROUP BY, SUM, HAVING):
+        Identifica medicamentos con stock consolidado activo menor o igual al stock mínimo.
+        """
+        sql = """
+            SELECT 
+                m.id_medicamento,
+                m.nombre_comercial,
+                m.presentacion,
+                m.dosis_valor,
+                m.dosis_unidad,
+                m.stock_minimo,
+                IFNULL(SUM(l.cant_actual), 0) AS stock_total_disponible,
+                GREATEST(0, CAST(m.stock_minimo AS SIGNED) - CAST(IFNULL(SUM(l.cant_actual), 0) AS SIGNED)) AS unidades_a_reponer
+            FROM medicamentos m
+            LEFT JOIN lotes l ON m.id_medicamento = l.id_medicamento 
+                             AND l.estado = 'Activo' 
+                             AND l.fecha_vencimiento > CURDATE()
+            GROUP BY 
+                m.id_medicamento, 
+                m.nombre_comercial, 
+                m.presentacion, 
+                m.dosis_valor, 
+                m.dosis_unidad, 
+                m.stock_minimo
+            HAVING stock_total_disponible <= m.stock_minimo
+            ORDER BY unidades_a_reponer DESC;
+        """
+        return ejecutar_lectura(sql)
+
+    def obtener_proximos_a_vencer(self, dias=180):
+        """Consulta compleja: lotes activos con vencimiento próximo bajo política FEFO."""
+        sql = """
+            SELECT 
+                l.id_lote,
+                l.num_lote,
+                l.fecha_vencimiento,
+                l.cant_actual,
+                DATEDIFF(l.fecha_vencimiento, CURDATE()) AS dias_para_vencer,
+                m.nombre_comercial AS medicamento,
+                m.presentacion,
+                p.nombre AS proveedor
+            FROM lotes l
+            JOIN medicamentos m ON l.id_medicamento = m.id_medicamento
+            JOIN proveedores p ON l.id_proveedor = p.id_proveedor
+            WHERE l.estado = 'Activo' 
+              AND l.cant_actual > 0
+              AND l.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL %s DAY)
+            ORDER BY l.fecha_vencimiento ASC;
+        """
+        return ejecutar_lectura(sql, (dias,))
+
+    def obtener_disponibles_venta(self):
+        """Retorna lotes aptos para la venta (activos, con stock y vencimiento futuro)."""
+        sql = """
+            SELECT 
+                l.id_lote,
+                l.num_lote,
+                l.fecha_vencimiento,
+                l.cant_actual,
+                m.nombre_comercial AS medicamento,
+                m.presentacion,
+                CONCAT(m.dosis_valor, m.dosis_unidad) AS dosis
+            FROM lotes l
+            JOIN medicamentos m ON l.id_medicamento = m.id_medicamento
+            WHERE l.estado = 'Activo' 
+              AND l.cant_actual > 0 
+              AND l.fecha_vencimiento > CURDATE()
+            ORDER BY l.fecha_vencimiento ASC;
+        """
+        return ejecutar_lectura(sql)
+
     # ==========================================
     # U: UPDATE
     # ==========================================
@@ -70,30 +142,4 @@ class LoteRepository(BaseRepository):
             valores = (nueva_cant_actual, id_lote)
 
         resultado = ejecutar_escritura(sql, valores)
-        if resultado["filas_afectadas"] > 0:
-            print(f"Lote ID {id_lote} actualizado: Stock={nueva_cant_actual}" + (f", Estado={nuevo_estado}" if nuevo_estado else ""))
-            return True
-        else:
-            print(f"No se encontró el lote ID {id_lote}.")
-            return False
-
-
-# ==========================================
-# EJEMPLO DE USO DE LA CLASE
-# ==========================================
-if __name__ == "__main__":
-    repo = LoteRepository()
-
-    print("--- 1. CREAR LOTE TEMPORAL ---")
-    id_nuevo = repo.crear("LOTE-TEST-01", "2028-12-31", 100, 100, id_medicamento=1, id_proveedor=1)
-
-    print("\n--- 2. LEER LOTES CON JOIN (Detalles de medicamento y proveedor) ---")
-    lotes = repo.obtener_detallados()
-    for l in lotes:
-        print(f"Lote: {l['num_lote']} | Vence: {l['fecha_vencimiento']} | Estado: {l['estado']} | Stock: {l['cant_actual']} | Med: {l['medicamento']} | Prov: {l['proveedor']}")
-
-    print("\n--- 3. ACTUALIZAR STOCK Y ESTADO ---")
-    repo.actualizar_stock_y_estado(id_nuevo, nueva_cant_actual=0, nuevo_estado="Agotado")
-
-    print("\n--- 4. ELIMINAR LOTE TEMPORAL (Heredado de BaseRepository) ---")
-    repo.eliminar(id_nuevo)
+        return resultado["filas_afectadas"] > 0
