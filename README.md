@@ -42,10 +42,15 @@ PROYECTO FINAL/
 │   ├── controllers/            # CONTROLADOR (C): Orquestación y lógica de aplicación
 │   │   ├── inventario_controller.py # Alertas, reposición y filtros de lotes
 │   │   └── movimiento_controller.py # Ventas, ingresos y bajas transaccionales
+│   ├── reports/                # REPORTES Y ANALÍTICA: Exportadores y visualización
+│   │   ├── text_reports.py     # Generador de Orden de Compra formal en TXT
+│   │   ├── csv_reports.py      # Exportación de auditoría histórica con Pandas
+│   │   └── graphics.py         # Gráficos estadísticos con Matplotlib (PNG)
 │   └── views/                  # VISTA (V): Interfaz gráfica de usuario (Tkinter)
 ├── tests/                      # Suite de pruebas automatizadas
 │   ├── test_conexion.py        # Comprobación de enlace con MySQL
-│   └── test_controllers.py     # Pruebas integrales de reglas de negocio y transacciones
+│   ├── test_controllers.py     # Pruebas integrales de reglas de negocio y transacciones
+│   └── test_reports.py         # Validación de exportación TXT, CSV y gráficos PNG
 ├── .env.example                # Plantilla de variables de entorno
 └── README.md                   # Documentación principal del proyecto
 ```
@@ -59,6 +64,11 @@ PROYECTO FINAL/
   - Conecta la Vista con los Modelos correspondientes.
   - Ejecuta validaciones previas mediante `src/core/validators` antes de persistir cambios.
   - Asegura transacciones atómicas (por ejemplo, actualizando simultáneamente el stock del lote y registrando la fila de auditoría en `movimientos_stock`).
+- **Módulo de Reportes y Analítica (`src/reports`):**
+  - Funciones independientes y desacopladas (stateless) para generar reportes sin depender de la UI.
+  - Generación de Órdenes de Compra en texto plano (`text_reports.py`).
+  - Auditoría histórica exportable a CSV mediante `pandas` (`csv_reports.py`).
+  - Gráficos analíticos renderizados en PNG con `matplotlib` (`graphics.py`), configurados con backend no interactivo (`Agg`) para integración fluida con la UI.
 - **Vista (`src/views`):**
   - Formularios y pantallas interactivas desarrolladas en **Tkinter**, desacopladas de la persistencia directa.
 - **Capa Core (`src/core`):**
@@ -77,6 +87,125 @@ PROYECTO FINAL/
 
 ---
 
-## 🚀 Puesta en Marcha Rápida
+## ⚙️ Cómo Levantar el Sistema (Paso a Paso)
 
-PROXIMO
+Sigue estos pasos para desplegar y ejecutar el proyecto localmente desde cero:
+
+### 1. Requisitos Previos
+
+Asegúrate de contar con el siguiente software instalado y en ejecución en tu sistema:
+
+- **Python 3.10 o superior:** [python.org/downloads](https://www.python.org/downloads/)
+- **MySQL Server 8.0 o superior:** Debe estar activo en el puerto `3306` (puerto por defecto de MySQL, o el puerto que definas en tu archivo `.env`).
+  - _Si usas Linux / WSL (Ubuntu):_ Verifica el estado con `sudo service mysql status` o inícialo con `sudo service mysql start`.
+  - _Si usas Windows nativo:_ Verifica que el servicio de MySQL esté iniciado en el Administrador de Servicios.
+
+---
+
+### 2. Clonar el Repositorio
+
+Abre una terminal y clona este repositorio en tu máquina local:
+
+```bash
+git clone https://github.com/agustin-salva-dev/PROYECTO-FINAL.git
+cd "PROYECTO FINAL"
+```
+
+---
+
+### 3. Crear y Activar un Entorno Virtual (RECOMENDADO)
+
+Se recomienda aislar las dependencias del proyecto utilizando el módulo estándar `venv`:
+
+- **En Windows (PowerShell):**
+
+  ```powershell
+  python -m venv venv
+  venv\Scripts\activate
+  ```
+
+  _(Nota: Si PowerShell arroja un error de directiva de ejecución `ExecutionPolicy`, puedes ejecutar antes `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` o bien usar el Símbolo del sistema CMD ejecutando `venv\Scripts\activate.bat`)._
+
+- **En Linux / macOS:**
+  ```bash
+  python3 -m venv venv
+  source venv/bin/activate
+  ```
+
+---
+
+### 4. Instalar Dependencias
+
+Instala los paquetes requeridos especificados en `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### 5. Configurar Variables de Entorno (`.env`)
+
+Crea tu archivo de configuración local a partir de la plantilla `.env.example`:
+
+- **En Windows:**
+  ```powershell
+  copy .env.example .env
+  ```
+- **En Linux / macOS:**
+  ```bash
+  cp .env.example .env
+  ```
+
+Abre el archivo `.env` recién creado con tu editor y coloca tus credenciales reales de MySQL:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=proyecto_farmacia
+DB_USER=root
+DB_PASSWORD=tu_contraseña_aqui
+```
+
+---
+
+### 6. Inicializar la Base de Datos Automáticamente
+
+El proyecto cuenta con un script de automatización **idempotente** que crea la base de datos `proyecto_farmacia`, construye todas las tablas con sus claves foráneas (`db/schema.sql`) y carga un set de datos de prueba realistas (`db/seed.sql`):
+
+```bash
+python db/inicializar_db.py
+```
+
+> **Nota:** Puedes re-ejecutar este script tantas veces como desees para restablecer la base de datos a su estado original limpio sin errores de claves foráneas.
+
+---
+
+### 7. Comprobar el Funcionamiento (Suite de Pruebas)
+
+Antes de iniciar la interfaz, puedes verificar que la conexión y las reglas de negocio estén operativas ejecutando los tests automatizados:
+
+1. **Test de Conectividad con MySQL:**
+   ```bash
+   python tests/test_conexion.py
+   ```
+2. **Test Integral de Controladores y Reglas de Negocio:**
+   ```bash
+   python tests/test_controllers.py
+   ```
+   *(Valida transacciones de venta, compras, alertas sanitarias y manejo de excepciones).*
+3. **Test de Generación de Reportes y Gráficos:**
+   ```bash
+   python tests/test_reports.py
+   ```
+   *(Valida la generación física de la orden de compra TXT, auditoría CSV y los 3 gráficos analíticos PNG).*
+
+---
+
+### 8. Ejecutar la Aplicación
+
+Una vez completados los pasos anteriores, inicia el sistema ejecutando:
+
+```bash
+python main.py
+```
