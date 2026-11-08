@@ -11,7 +11,9 @@ import os
 import mysql.connector
 from dotenv import load_dotenv
 
-load_dotenv()
+# Carga las variables del archivo .env ubicado en la raíz del proyecto
+dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+load_dotenv(dotenv_path)
 
 
 def ejecutar_script_sql(cursor, ruta_archivo):
@@ -70,13 +72,13 @@ def main():
         conexion.commit()
 
         # 3. Ejecutar Schema (DDL: eliminación limpia y creación de tablas)
-        ruta_schema = os.path.join(os.path.dirname(__file__), "db", "schema.sql")
+        ruta_schema = os.path.join(os.path.dirname(__file__), "schema.sql")
         ejecutar_script_sql(cursor, ruta_schema)
         conexion.commit()
         print("✅ Tablas creadas y vinculadas con éxito.")
 
         # 4. Ejecutar Seed (DML: inserción de datos iniciales de prueba)
-        ruta_seed = os.path.join(os.path.dirname(__file__), "db", "seed.sql")
+        ruta_seed = os.path.join(os.path.dirname(__file__), "seed.sql")
         ejecutar_script_sql(cursor, ruta_seed)
         conexion.commit()
         print("Datos iniciales cargados con éxito.")
