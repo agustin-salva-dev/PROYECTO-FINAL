@@ -12,7 +12,7 @@ venv/
 env/
 
 # Archivos de respaldo y reportes temporales generados por la app
-backups/
+backups_output/
 reports_output/
 
 # Carpetas de configuración de editores
