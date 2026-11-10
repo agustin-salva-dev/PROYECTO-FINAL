@@ -46,11 +46,25 @@ PROYECTO FINAL/
 │   │   ├── text_reports.py     # Generador de Orden de Compra formal en TXT
 │   │   ├── csv_reports.py      # Exportación de auditoría histórica con Pandas
 │   │   └── graphics.py         # Gráficos estadísticos con Matplotlib (PNG)
-│   └── views/                  # VISTA (V): Interfaz gráfica de usuario (Tkinter)
+│   ├── backups/                # BACKUPS: Respaldo y restauración relacional
+│   │   ├── exportar_backup.py  # Exportación completa a CSV con marcas temporales
+│   │   └── restaurar_backup.py # Restauración íntegra respetando integridad referencial
+│   └── views/                  # VISTA (V): Interfaz interactiva de consola (CLI)
+│       ├── ui_helpers.py       # Utilidades visuales (tablas ASCII, inputs, separadores)
+│       ├── menu_medicamentos.py# Submenú CRUD Medicamentos
+│       ├── menu_proveedores.py # Submenú CRUD Proveedores
+│       ├── menu_lotes.py       # Submenú CRUD Lotes
+│       ├── menu_movimientos.py # Submenú Transacciones de Stock y Auditoría
+│       ├── menu_inventario.py  # Submenú Alertas Sanitarias y Stock Crítico
+│       ├── menu_reportes.py    # Submenú Generación de Reportes y Gráficos
+│       ├── menu_backup.py      # Submenú Backup y Restauración
+│       └── menu_tests.py       # Submenú Suite de Pruebas
 ├── tests/                      # Suite de pruebas automatizadas
 │   ├── test_conexion.py        # Comprobación de enlace con MySQL
 │   ├── test_controllers.py     # Pruebas integrales de reglas de negocio y transacciones
 │   └── test_reports.py         # Validación de exportación TXT, CSV y gráficos PNG
+├── main.py                     # Punto de entrada unificado del sistema
+├── requirements.txt            # Dependencias del proyecto (pip)
 ├── .env.example                # Plantilla de variables de entorno
 └── README.md                   # Documentación principal del proyecto
 ```
@@ -69,8 +83,12 @@ PROYECTO FINAL/
   - Generación de Órdenes de Compra en texto plano (`text_reports.py`).
   - Auditoría histórica exportable a CSV mediante `pandas` (`csv_reports.py`).
   - Gráficos analíticos renderizados en PNG con `matplotlib` (`graphics.py`), configurados con backend no interactivo (`Agg`) para integración fluida con la UI.
+- **Módulo de Backups (`src/backups`):**
+  - Exportación de estructura DDL y datos relacionales a CSV con marcas de tiempo (`exportar_backup.py`).
+  - Restauración atómica con control temporal de claves foráneas (`restaurar_backup.py`) para evitar conflictos de integridad referencial.
 - **Vista (`src/views`):**
-  - Formularios y pantallas interactivas desarrolladas en **Tkinter**, desacopladas de la persistencia directa.
+  - Interfaz de consola interactiva (CLI) desacoplada en submenús modulares independientes por entidad y responsabilidad (`menu_*.py`).
+  - Utilidades visuales reutilizables (`ui_helpers.py`) para renderizado dinámico de tablas ASCII con autoajuste de columnas y sanitización de entradas por teclado.
 - **Capa Core (`src/core`):**
   - Conexión segura a MySQL con variables de entorno (`.env`) y gestión robusta de conexiones para prevenir fugas de recursos.
 
